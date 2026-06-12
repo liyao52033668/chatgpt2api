@@ -1,0 +1,16 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "chatgpt2api",
+	"main": "main.py",
+	"compatibility_date": "2026-06-12",
+	"compatibility_flags": [
+		"python_workers",
+		"python_dedicated_snapshot"
+	],
+	"vars": {
+		"MESSAGE": "My env var"
+	},
+	"observability": {
+		"enabled": true
+	}
+}
