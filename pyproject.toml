@@ -19,13 +19,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
-]
-
-[dependency-groups]
-dev = [
     "workers-py",
-    "workers-runtime-sdk"
+    "workers-runtime-sdk",
+    "httpx>=0.28.1"
 ]
 
 [[tool.uv.index]]
