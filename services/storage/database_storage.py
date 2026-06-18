@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 
@@ -17,7 +18,8 @@ class AccountModel(Base):
     __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    access_token = Column(String(2048), unique=True, nullable=False, index=True)
+    access_token = Column(String(2048), unique=True, nullable=False)
+    access_token_hash = Column(String(32), unique=True, nullable=False, index=True)
     data = Column(Text, nullable=False)  # JSON 格式存储完整账号数据
 
 
@@ -102,12 +104,22 @@ class DatabaseStorageBackend(StorageBackend):
                 key_value = str(item.get(source_key) or "").strip()
                 if not key_value:
                     continue
-                session.add(
-                    model(
-                        **{target_key or source_key: key_value},
-                        data=json.dumps(item, ensure_ascii=False),
+                if model == AccountModel:
+                    token_hash = hashlib.md5(key_value.encode('utf-8')).hexdigest()
+                    session.add(
+                        model(
+                            access_token=key_value,
+                            access_token_hash=token_hash,
+                            data=json.dumps(item, ensure_ascii=False),
+                        )
                     )
-                )
+                else:
+                    session.add(
+                        model(
+                            **{target_key or source_key: key_value},
+                            data=json.dumps(item, ensure_ascii=False),
+                        )
+                    )
             session.commit()
         except Exception as e:
             session.rollback()
