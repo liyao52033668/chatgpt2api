@@ -365,10 +365,36 @@ class ConfigStore:
             )
 
     def _load(self) -> dict[str, object]:
-        return _read_json_object(self.path, name="config.json")
+        # 尝试从 storage backend 加载
+        storage = self.get_storage_backend()
+        if storage:
+            try:
+                data = storage.load_config()
+                if data:
+                    return data
+            except Exception:
+                pass
+
+        # 回退到本地文件
+        data = _read_json_object(self.path, name="config.json")
+        # 如果从本地文件加载成功，同时保存到数据库
+        if storage and data:
+            try:
+                storage.save_config(data)
+            except Exception:
+                pass
+        return data
 
     def _save(self) -> None:
         self.path.write_text(json.dumps(self.data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        # 同时保存到 storage backend
+        storage = self.get_storage_backend()
+        if storage:
+            try:
+                storage.save_config(self.data)
+            except Exception:
+                pass
 
     @property
     def auth_key(self) -> str:
@@ -641,10 +667,21 @@ def load_backup_state() -> dict[str, object]:
     storage = _get_storage_for_backup()
     if storage:
         try:
-            return storage.load_backup_state()
+            data = storage.load_backup_state()
+            if data:
+                return data
         except Exception:
             pass
-    return _normalize_backup_state(_read_json_object(BACKUP_STATE_FILE, name="backup_state.json"))
+
+    # 回退到本地文件
+    data = _normalize_backup_state(_read_json_object(BACKUP_STATE_FILE, name="backup_state.json"))
+    # 如果从本地文件加载成功，同时保存到数据库
+    if storage and data:
+        try:
+            storage.save_backup_state(data)
+        except Exception:
+            pass
+    return data
 
 
 def save_backup_state(state: dict[str, object]) -> dict[str, object]:
