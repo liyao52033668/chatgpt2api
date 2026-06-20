@@ -23,7 +23,7 @@ SUB2API_CONFIG_FILE = DATA_DIR / "sub2api_config.json"
 def _get_storage_backend():
     """获取存储后端（延迟加载避免循环依赖）"""
     try:
-        return config.storage
+        return config.get_storage_backend()
     except Exception:
         return None
 
@@ -101,7 +101,14 @@ class Sub2APIConfig:
         try:
             raw = json.loads(self._store_file.read_text(encoding="utf-8"))
             if isinstance(raw, list):
-                return [_normalize_server(item) for item in raw if isinstance(item, dict)]
+                servers = [_normalize_server(item) for item in raw if isinstance(item, dict)]
+                # 如果从本地文件加载成功，同时保存到数据库
+                if storage and servers:
+                    try:
+                        storage.save_sub2api_config({"servers": servers})
+                    except Exception:
+                        pass
+                return servers
         except Exception:
             pass
         return []

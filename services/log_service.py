@@ -26,7 +26,7 @@ INTERNAL_RESPONSE_KEYS = {"_account_email", "_conversation_id"}
 def _get_storage_backend():
     """获取存储后端（延迟加载避免循环依赖）"""
     try:
-        return config.storage
+        return config.get_storage_backend()
     except Exception:
         return None
 

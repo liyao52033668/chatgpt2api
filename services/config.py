@@ -632,7 +632,7 @@ class ConfigStore:
 def _get_storage_for_backup():
     """获取存储后端（用于 backup_state）"""
     try:
-        return config.storage
+        return config.get_storage_backend()
     except Exception:
         return None
 

@@ -19,7 +19,7 @@ REGISTER_FILE = DATA_DIR / "register.json"
 def _get_storage_backend():
     """获取存储后端（延迟加载避免循环依赖）"""
     try:
-        return config.storage
+        return config.get_storage_backend()
     except Exception:
         return None
 
@@ -91,7 +91,15 @@ class RegisterService:
 
         # 回退到本地文件
         try:
-            return _normalize(json.loads(self._store_file.read_text(encoding="utf-8")))
+            config_data = json.loads(self._store_file.read_text(encoding="utf-8"))
+            result = _normalize(config_data)
+            # 如果从本地文件加载成功，同时保存到数据库
+            if storage and config_data:
+                try:
+                    storage.save_register_config(result)
+                except Exception:
+                    pass
+            return result
         except Exception:
             return _normalize({})
 

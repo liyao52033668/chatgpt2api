@@ -79,7 +79,7 @@ def _management_headers(secret_key: str) -> dict[str, str]:
 def _get_storage_backend():
     """获取存储后端（延迟加载避免循环依赖）"""
     try:
-        return config.storage
+        return config.get_storage_backend()
     except Exception:
         return None
 
@@ -107,7 +107,14 @@ class CPAConfig:
             return []
         try:
             raw = json.loads(self._store_file.read_text(encoding="utf-8"))
-            return _normalize_pools(raw)
+            pools = _normalize_pools(raw)
+            # 如果从本地文件加载成功，同时保存到数据库
+            if storage and pools:
+                try:
+                    storage.save_cpa_config({"pools": pools})
+                except Exception:
+                    pass
+            return pools
         except Exception:
             return []
 
