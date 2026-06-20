@@ -352,8 +352,8 @@ class ConfigStore:
     def __init__(self, path: Path):
         self.path = path
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        self.data = self._load()
-        self._storage_backend: StorageBackend | None = None
+        self._storage_backend: StorageBackend | None = None  # 先初始化
+        self.data = self._load()  # 再加载数据
         if _is_invalid_auth_key(self.auth_key):
             raise ValueError(
                 "❌ auth-key 未设置！\n"
