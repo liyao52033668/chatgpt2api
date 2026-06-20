@@ -22,6 +22,12 @@ class GitStorageBackend(StorageBackend):
         branch: str = "main",
         file_path: str = "accounts.json",
         auth_keys_file_path: str = "auth_keys.json",
+        cpa_config_file_path: str = "cpa_config.json",
+        image_index_file_path: str = "image_index.json",
+        config_file_path: str = "config.json",
+        backup_state_file_path: str = "backup_state.json",
+        register_config_file_path: str = "register.json",
+        sub2api_config_file_path: str = "sub2api_config.json",
         local_cache_dir: Path | None = None,
     ):
         self.repo_url = repo_url
@@ -29,6 +35,12 @@ class GitStorageBackend(StorageBackend):
         self.branch = branch
         self.file_path = file_path
         self.auth_keys_file_path = auth_keys_file_path
+        self.cpa_config_file_path = cpa_config_file_path
+        self.image_index_file_path = image_index_file_path
+        self.config_file_path = config_file_path
+        self.backup_state_file_path = backup_state_file_path
+        self.register_config_file_path = register_config_file_path
+        self.sub2api_config_file_path = sub2api_config_file_path
         
         # 本地缓存目录
         if local_cache_dir is None:
@@ -116,6 +128,106 @@ class GitStorageBackend(StorageBackend):
         except Exception as e:
             print(f"[git-storage] save failed: {e}")
             raise e
+
+    def load_cpa_config(self) -> dict[str, Any]:
+        """从 Git 仓库加载 CPA 配置"""
+        try:
+            return self._load_json_object(self.cpa_config_file_path)
+        except Exception as e:
+            print(f"[git-storage] load failed: {e}")
+            return {}
+
+    def save_cpa_config(self, config: dict[str, Any]) -> None:
+        """保存 CPA 配置到 Git 仓库"""
+        try:
+            self._save_json_file(self.cpa_config_file_path, config, "Update CPA config")
+        except Exception as e:
+            print(f"[git-storage] save failed: {e}")
+            raise e
+
+    def load_image_index(self) -> dict[str, Any]:
+        """从 Git 仓库加载图片索引"""
+        try:
+            return self._load_json_object(self.image_index_file_path)
+        except Exception as e:
+            print(f"[git-storage] load failed: {e}")
+            return {}
+
+    def save_image_index(self, index: dict[str, Any]) -> None:
+        """保存图片索引到 Git 仓库"""
+        try:
+            self._save_json_file(self.image_index_file_path, index, "Update image index")
+        except Exception as e:
+            print(f"[git-storage] save failed: {e}")
+            raise e
+
+    def load_config(self) -> dict[str, Any]:
+        """从 Git 仓库加载主配置"""
+        try:
+            return self._load_json_object(self.config_file_path)
+        except Exception as e:
+            print(f"[git-storage] load failed: {e}")
+            return {}
+
+    def save_config(self, config: dict[str, Any]) -> None:
+        """保存主配置到 Git 仓库"""
+        try:
+            self._save_json_file(self.config_file_path, config, "Update config")
+        except Exception as e:
+            print(f"[git-storage] save failed: {e}")
+            raise e
+
+    def load_backup_state(self) -> dict[str, Any]:
+        """从 Git 仓库加载备份状态"""
+        try:
+            return self._load_json_object(self.backup_state_file_path)
+        except Exception as e:
+            print(f"[git-storage] load failed: {e}")
+            return {}
+
+    def save_backup_state(self, state: dict[str, Any]) -> None:
+        """保存备份状态到 Git 仓库"""
+        try:
+            self._save_json_file(self.backup_state_file_path, state, "Update backup state")
+        except Exception as e:
+            print(f"[git-storage] save failed: {e}")
+            raise e
+
+    def load_register_config(self) -> dict[str, Any]:
+        """从 Git 仓库加载注册配置"""
+        try:
+            return self._load_json_object(self.register_config_file_path)
+        except Exception as e:
+            print(f"[git-storage] load failed: {e}")
+            return {}
+
+    def save_register_config(self, config: dict[str, Any]) -> None:
+        """保存注册配置到 Git 仓库"""
+        try:
+            self._save_json_file(self.register_config_file_path, config, "Update register config")
+        except Exception as e:
+            print(f"[git-storage] save failed: {e}")
+            raise e
+
+    def load_sub2api_config(self) -> dict[str, Any]:
+        """从 Git 仓库加载 Sub2API 配置"""
+        try:
+            return self._load_json_object(self.sub2api_config_file_path)
+        except Exception as e:
+            print(f"[git-storage] load failed: {e}")
+            return {}
+
+    def save_sub2api_config(self, config: dict[str, Any]) -> None:
+        """保存 Sub2API 配置到 Git 仓库"""
+        try:
+            self._save_json_file(self.sub2api_config_file_path, config, "Update Sub2API config")
+        except Exception as e:
+            print(f"[git-storage] save failed: {e}")
+            raise e
+
+    def _load_json_object(self, file_path: str) -> dict[str, Any]:
+        data = self._load_json_value(file_path)
+        return data if isinstance(data, dict) else {}
 
     def _load_json_file(self, file_path: str) -> list[dict[str, Any]]:
         data = self._load_json_value(file_path)

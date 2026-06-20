@@ -9,11 +9,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from services.account_service import account_service
-from services.config import DATA_DIR
+from services.config import DATA_DIR, config
 from services.register import mail_provider, openai_register
 
 
 REGISTER_FILE = DATA_DIR / "register.json"
+
+
+def _get_storage_backend():
+    """获取存储后端（延迟加载避免循环依赖）"""
+    try:
+        return config.storage
+    except Exception:
+        return None
 
 
 def _serialize_outlook_pool(credentials: list[dict]) -> str:
@@ -71,6 +79,17 @@ class RegisterService:
             self.start()
 
     def _load(self) -> dict:
+        # 尝试从 storage backend 加载
+        storage = _get_storage_backend()
+        if storage:
+            try:
+                data = storage.load_register_config()
+                if data:
+                    return _normalize(data)
+            except Exception:
+                pass
+
+        # 回退到本地文件
         try:
             return _normalize(json.loads(self._store_file.read_text(encoding="utf-8")))
         except Exception:
@@ -79,6 +98,14 @@ class RegisterService:
     def _save(self) -> None:
         self._store_file.parent.mkdir(parents=True, exist_ok=True)
         self._store_file.write_text(json.dumps(self._config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        # 同时保存到 storage backend
+        storage = _get_storage_backend()
+        if storage:
+            try:
+                storage.save_register_config(self._config)
+            except Exception:
+                pass
 
     def get(self) -> dict:
         with self._lock:

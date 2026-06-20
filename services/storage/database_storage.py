@@ -32,6 +32,62 @@ class AuthKeyModel(Base):
     data = Column(Text, nullable=False)
 
 
+class ChatGPTConfigModel(Base):
+    """主配置数据模型"""
+    __tablename__ = "chatgpt_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(128), unique=True, nullable=False, index=True)
+    data = Column(Text, nullable=False)
+
+
+class ChatGPTBackupStateModel(Base):
+    """备份状态数据模型"""
+    __tablename__ = "chatgpt_backup_state"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(128), unique=True, nullable=False, index=True)
+    data = Column(Text, nullable=False)
+
+
+class ChatGPTCPAConfigModel(Base):
+    """CPA 配置数据模型"""
+    __tablename__ = "chatgpt_cpa_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(128), unique=True, nullable=False, index=True)
+    data = Column(Text, nullable=False)
+
+
+class ChatGPTRegisterConfigModel(Base):
+    """注册配置数据模型"""
+    __tablename__ = "chatgpt_register_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(128), unique=True, nullable=False, index=True)
+    data = Column(Text, nullable=False)
+
+
+class ChatGPTSub2APIConfigModel(Base):
+    """Sub2API 配置数据模型"""
+    __tablename__ = "chatgpt_sub2api_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(128), unique=True, nullable=False, index=True)
+    data = Column(Text, nullable=False)
+
+
+class ChatGPTLogModel(Base):
+    """日志数据模型"""
+    __tablename__ = "chatgpt_logs"
+
+    id = Column(String(32), primary_key=True)
+    time = Column(String(20), nullable=False, index=True)
+    type = Column(String(32), nullable=False, index=True)
+    summary = Column(Text)
+    detail = Column(Text)
+
+
 class DatabaseStorageBackend(StorageBackend):
     """数据库存储后端（支持 SQLite、PostgreSQL、MySQL 等）"""
 
@@ -72,6 +128,143 @@ class DatabaseStorageBackend(StorageBackend):
     def save_auth_keys(self, auth_keys: list[dict[str, Any]]) -> None:
         """保存鉴权密钥数据到数据库"""
         self._save_rows(AuthKeyModel, auth_keys, "id", "key_id")
+
+    def load_cpa_config(self) -> dict[str, Any]:
+        """从数据库加载 CPA 配置"""
+        return self._load_kv_row(ChatGPTCPAConfigModel, "cpa_config")
+
+    def save_cpa_config(self, config: dict[str, Any]) -> None:
+        """保存 CPA 配置到数据库"""
+        self._save_kv_row(ChatGPTCPAConfigModel, "cpa_config", config)
+
+    def load_image_index(self) -> dict[str, Any]:
+        """加载图片索引（保持兼容性，实际不保存到数据库）"""
+        return {}
+
+    def save_image_index(self, index: dict[str, Any]) -> None:
+        """保存图片索引（保持兼容性，实际不保存到数据库）"""
+        pass
+
+    def load_config(self) -> dict[str, Any]:
+        """从数据库加载主配置"""
+        return self._load_kv_row(ChatGPTConfigModel, "config")
+
+    def save_config(self, config: dict[str, Any]) -> None:
+        """保存主配置到数据库"""
+        self._save_kv_row(ChatGPTConfigModel, "config", config)
+
+    def load_backup_state(self) -> dict[str, Any]:
+        """从数据库加载备份状态"""
+        return self._load_kv_row(ChatGPTBackupStateModel, "backup_state")
+
+    def save_backup_state(self, state: dict[str, Any]) -> None:
+        """保存备份状态到数据库"""
+        self._save_kv_row(ChatGPTBackupStateModel, "backup_state", state)
+
+    def load_register_config(self) -> dict[str, Any]:
+        """从数据库加载注册配置"""
+        return self._load_kv_row(ChatGPTRegisterConfigModel, "register_config")
+
+    def save_register_config(self, config: dict[str, Any]) -> None:
+        """保存注册配置到数据库"""
+        self._save_kv_row(ChatGPTRegisterConfigModel, "register_config", config)
+
+    def load_sub2api_config(self) -> dict[str, Any]:
+        """从数据库加载 Sub2API 配置"""
+        return self._load_kv_row(ChatGPTSub2APIConfigModel, "sub2api_config")
+
+    def save_sub2api_config(self, config: dict[str, Any]) -> None:
+        """保存 Sub2API 配置到数据库"""
+        self._save_kv_row(ChatGPTSub2APIConfigModel, "sub2api_config", config)
+
+    def add_log(self, item: dict[str, Any]) -> None:
+        """添加日志条目到数据库"""
+        session = self.Session()
+        try:
+            log_entry = ChatGPTLogModel(
+                id=str(item.get("id", "")),
+                time=str(item.get("time", "")),
+                type=str(item.get("type", "")),
+                summary=str(item.get("summary", "")),
+                detail=json.dumps(item.get("detail", {}), ensure_ascii=False),
+            )
+            session.add(log_entry)
+            session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            session.close()
+
+    def list_logs(self, type: str = "", start_date: str = "", end_date: str = "", limit: int = 200) -> list[dict[str, Any]]:
+        """从数据库查询日志条目"""
+        session = self.Session()
+        try:
+            query = session.query(ChatGPTLogModel)
+            if type:
+                query = query.filter(ChatGPTLogModel.type == type)
+            if start_date:
+                query = query.filter(ChatGPTLogModel.time >= start_date)
+            if end_date:
+                query = query.filter(ChatGPTLogModel.time <= f"{end_date} 23:59:59")
+            query = query.order_by(ChatGPTLogModel.time.desc()).limit(limit)
+
+            results = []
+            for row in query.all():
+                try:
+                    detail = json.loads(row.detail) if row.detail else {}
+                except json.JSONDecodeError:
+                    detail = {}
+                results.append({
+                    "id": row.id,
+                    "time": row.time,
+                    "type": row.type,
+                    "summary": row.summary,
+                    "detail": detail,
+                })
+            return results
+        finally:
+            session.close()
+
+    def delete_logs(self, ids: list[str]) -> dict[str, int]:
+        """从数据库删除日志条目"""
+        session = self.Session()
+        try:
+            target_ids = set(ids)
+            removed = session.query(ChatGPTLogModel).filter(ChatGPTLogModel.id.in_(target_ids)).delete(synchronize_session=False)
+            session.commit()
+            return {"removed": removed}
+        except Exception:
+            session.rollback()
+            return {"removed": 0}
+        finally:
+            session.close()
+
+    def _load_kv_row(self, model: type, key: str) -> dict[str, Any]:
+        """加载键值对数据"""
+        session = self.Session()
+        try:
+            row = session.query(model).filter(model.key == key).first()
+            if row:
+                try:
+                    return json.loads(row.data)
+                except json.JSONDecodeError:
+                    return {}
+            return {}
+        finally:
+            session.close()
+
+    def _save_kv_row(self, model: type, key: str, data: dict[str, Any]) -> None:
+        """保存键值对数据"""
+        session = self.Session()
+        try:
+            session.query(model).filter(model.key == key).delete()
+            session.add(model(key=key, data=json.dumps(data, ensure_ascii=False)))
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
 
     def _load_rows(self, model: type[AccountModel] | type[AuthKeyModel]) -> list[dict[str, Any]]:
         session = self.Session()

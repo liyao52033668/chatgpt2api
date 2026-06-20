@@ -629,13 +629,33 @@ class ConfigStore:
         return self._storage_backend
 
 
+def _get_storage_for_backup():
+    """获取存储后端（用于 backup_state）"""
+    try:
+        return config.storage
+    except Exception:
+        return None
+
+
 def load_backup_state() -> dict[str, object]:
+    storage = _get_storage_for_backup()
+    if storage:
+        try:
+            return storage.load_backup_state()
+        except Exception:
+            pass
     return _normalize_backup_state(_read_json_object(BACKUP_STATE_FILE, name="backup_state.json"))
 
 
 def save_backup_state(state: dict[str, object]) -> dict[str, object]:
     normalized = _normalize_backup_state(state)
     BACKUP_STATE_FILE.write_text(json.dumps(normalized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    storage = _get_storage_for_backup()
+    if storage:
+        try:
+            storage.save_backup_state(normalized)
+        except Exception:
+            pass
     return normalized
 
 

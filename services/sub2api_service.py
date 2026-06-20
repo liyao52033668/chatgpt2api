@@ -14,10 +14,18 @@ from threading import Lock
 from curl_cffi.requests import Session
 
 from services.account_service import account_service
-from services.config import DATA_DIR
+from services.config import DATA_DIR, config
 
 
 SUB2API_CONFIG_FILE = DATA_DIR / "sub2api_config.json"
+
+
+def _get_storage_backend():
+    """获取存储后端（延迟加载避免循环依赖）"""
+    try:
+        return config.storage
+    except Exception:
+        return None
 
 # Cached JWT per server to avoid re-login on every list/import call.
 # Token lifetime on sub2api defaults to 24h; we refresh 5 min before expiry.
@@ -77,6 +85,17 @@ class Sub2APIConfig:
         self._servers: list[dict] = self._load()
 
     def _load(self) -> list[dict]:
+        # 尝试从 storage backend 加载
+        storage = _get_storage_backend()
+        if storage:
+            try:
+                data = storage.load_sub2api_config()
+                if isinstance(data.get("servers"), list):
+                    return [_normalize_server(item) for item in data["servers"] if isinstance(item, dict)]
+            except Exception:
+                pass
+
+        # 回退到本地文件
         if not self._store_file.exists():
             return []
         try:
@@ -93,6 +112,14 @@ class Sub2APIConfig:
             json.dumps(self._servers, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+
+        # 同时保存到 storage backend
+        storage = _get_storage_backend()
+        if storage:
+            try:
+                storage.save_sub2api_config({"servers": self._servers})
+            except Exception:
+                pass
 
     def list_servers(self) -> list[dict]:
         with self._lock:

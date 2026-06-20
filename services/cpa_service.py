@@ -9,11 +9,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from curl_cffi.requests import Session
 
 from services.account_service import account_service
-from services.config import DATA_DIR
+from services.config import DATA_DIR, config
 from services.proxy_service import proxy_settings
 
 
@@ -59,11 +60,28 @@ def _normalize_pool(raw: dict) -> dict:
     }
 
 
+def _normalize_pools(raw: object) -> list[dict]:
+    if isinstance(raw, dict) and "base_url" in raw:
+        pool = _normalize_pool(raw)
+        return [pool] if pool["base_url"] else []
+    if isinstance(raw, list):
+        return [_normalize_pool(item) for item in raw if isinstance(item, dict)]
+    return []
+
+
 def _management_headers(secret_key: str) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {secret_key}",
         "Accept": "application/json",
     }
+
+
+def _get_storage_backend():
+    """获取存储后端（延迟加载避免循环依赖）"""
+    try:
+        return config.storage
+    except Exception:
+        return None
 
 
 class CPAConfig:
@@ -73,22 +91,37 @@ class CPAConfig:
         self._pools: list[dict] = self._load()
 
     def _load(self) -> list[dict]:
+        # 尝试从 storage backend 加载
+        storage = _get_storage_backend()
+        if storage:
+            try:
+                data = storage.load_cpa_config()
+                pools = _normalize_pools(data.get("pools"))
+                if pools:
+                    return pools
+            except Exception:
+                pass
+
+        # 回退到本地文件
         if not self._store_file.exists():
             return []
         try:
             raw = json.loads(self._store_file.read_text(encoding="utf-8"))
-            if isinstance(raw, dict) and "base_url" in raw:
-                pool = _normalize_pool(raw)
-                return [pool] if pool["base_url"] else []
-            if isinstance(raw, list):
-                return [_normalize_pool(item) for item in raw if isinstance(item, dict)]
+            return _normalize_pools(raw)
         except Exception:
-            pass
-        return []
+            return []
 
     def _save(self) -> None:
         self._store_file.parent.mkdir(parents=True, exist_ok=True)
         self._store_file.write_text(json.dumps(self._pools, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        # 同时保存到 storage backend
+        storage = _get_storage_backend()
+        if storage:
+            try:
+                storage.save_cpa_config({"pools": self._pools})
+            except Exception:
+                pass
 
     def list_pools(self) -> list[dict]:
         with self._lock:
