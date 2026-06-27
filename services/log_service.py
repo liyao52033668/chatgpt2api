@@ -14,21 +14,13 @@ from fastapi import HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from services.config import DATA_DIR, config
+from services.config import DATA_DIR
 from services.protocol.error_response import anthropic_error_response, openai_error_response
 from utils.helper import anthropic_sse_stream, sse_json_stream
 
 LOG_TYPE_CALL = "call"
 LOG_TYPE_ACCOUNT = "account"
 INTERNAL_RESPONSE_KEYS = {"_account_email", "_conversation_id"}
-
-
-def _get_storage_backend():
-    """获取存储后端（延迟加载避免循环依赖）"""
-    try:
-        return config.get_storage_backend()
-    except Exception:
-        return None
 
 
 class LogService:
@@ -79,26 +71,7 @@ class LogService:
         with self.path.open("a", encoding="utf-8") as file:
             file.write(self._serialize_item(item) + "\n")
 
-        # 同时保存到数据库
-        storage = _get_storage_backend()
-        if storage:
-            try:
-                storage.add_log(item)
-            except Exception:
-                pass
-
     def list(self, type: str = "", start_date: str = "", end_date: str = "", limit: int = 200) -> list[dict[str, Any]]:
-        # 尝试从数据库加载
-        storage = _get_storage_backend()
-        if storage:
-            try:
-                logs = storage.list_logs(type=type, start_date=start_date, end_date=end_date, limit=limit)
-                if logs:
-                    return logs
-            except Exception:
-                pass
-
-        # 回退到本地文件
         if not self.path.exists():
             return []
         items: list[dict[str, Any]] = []
@@ -134,15 +107,6 @@ class LogService:
         if content:
             content += "\n"
         self.path.write_text(content, encoding="utf-8")
-
-        # 同时从数据库删除
-        storage = _get_storage_backend()
-        if storage:
-            try:
-                storage.delete_logs(list(target_ids))
-            except Exception:
-                pass
-
         return {"removed": removed}
 
 

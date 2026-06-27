@@ -77,17 +77,6 @@ class ChatGPTSub2APIConfigModel(Base):
     data = Column(Text, nullable=False)
 
 
-class ChatGPTLogModel(Base):
-    """日志数据模型"""
-    __tablename__ = "chatgpt_logs"
-
-    id = Column(String(32), primary_key=True)
-    time = Column(String(20), nullable=False, index=True)
-    type = Column(String(32), nullable=False, index=True)
-    summary = Column(Text)
-    detail = Column(Text)
-
-
 class DatabaseStorageBackend(StorageBackend):
     """数据库存储后端（支持 SQLite、PostgreSQL、MySQL 等）"""
 
@@ -176,68 +165,6 @@ class DatabaseStorageBackend(StorageBackend):
     def save_sub2api_config(self, config: dict[str, Any]) -> None:
         """保存 Sub2API 配置到数据库"""
         self._save_kv_row(ChatGPTSub2APIConfigModel, "sub2api_config", config)
-
-    def add_log(self, item: dict[str, Any]) -> None:
-        """添加日志条目到数据库"""
-        session = self.Session()
-        try:
-            log_entry = ChatGPTLogModel(
-                id=str(item.get("id", "")),
-                time=str(item.get("time", "")),
-                type=str(item.get("type", "")),
-                summary=str(item.get("summary", "")),
-                detail=json.dumps(item.get("detail", {}), ensure_ascii=False),
-            )
-            session.add(log_entry)
-            session.commit()
-        except Exception:
-            session.rollback()
-        finally:
-            session.close()
-
-    def list_logs(self, type: str = "", start_date: str = "", end_date: str = "", limit: int = 200) -> list[dict[str, Any]]:
-        """从数据库查询日志条目"""
-        session = self.Session()
-        try:
-            query = session.query(ChatGPTLogModel)
-            if type:
-                query = query.filter(ChatGPTLogModel.type == type)
-            if start_date:
-                query = query.filter(ChatGPTLogModel.time >= start_date)
-            if end_date:
-                query = query.filter(ChatGPTLogModel.time <= f"{end_date} 23:59:59")
-            query = query.order_by(ChatGPTLogModel.time.desc()).limit(limit)
-
-            results = []
-            for row in query.all():
-                try:
-                    detail = json.loads(row.detail) if row.detail else {}
-                except json.JSONDecodeError:
-                    detail = {}
-                results.append({
-                    "id": row.id,
-                    "time": row.time,
-                    "type": row.type,
-                    "summary": row.summary,
-                    "detail": detail,
-                })
-            return results
-        finally:
-            session.close()
-
-    def delete_logs(self, ids: list[str]) -> dict[str, int]:
-        """从数据库删除日志条目"""
-        session = self.Session()
-        try:
-            target_ids = set(ids)
-            removed = session.query(ChatGPTLogModel).filter(ChatGPTLogModel.id.in_(target_ids)).delete(synchronize_session=False)
-            session.commit()
-            return {"removed": removed}
-        except Exception:
-            session.rollback()
-            return {"removed": 0}
-        finally:
-            session.close()
 
     def _load_kv_row(self, model: type, key: str) -> dict[str, Any]:
         """加载键值对数据"""

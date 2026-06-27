@@ -87,18 +87,6 @@ class StorageBackend(ABC):
         """保存 Sub2API 配置"""
         pass
 
-    def add_log(self, item: dict[str, Any]) -> None:
-        """添加日志条目（默认不实现，由专门的日志服务处理）"""
-        pass
-
-    def list_logs(self, type: str = "", start_date: str = "", end_date: str = "", limit: int = 200) -> list[dict[str, Any]]:
-        """查询日志条目（默认不实现，由专门的日志服务处理）"""
-        return []
-
-    def delete_logs(self, ids: list[str]) -> dict[str, int]:
-        """删除日志条目（默认不实现，由专门的日志服务处理）"""
-        return {"removed": 0}
-
     @abstractmethod
     def health_check(self) -> dict[str, Any]:
         """健康检查，返回存储后端状态"""

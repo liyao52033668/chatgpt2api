@@ -3,7 +3,7 @@
   "refresh_account_interval_minute": 5,
   "image_retention_days": 15,
   "image_poll_timeout_secs": 120,
-  "auto_remove_rate_limited_accounts": false,
+  "auto_remove_rate_limited_accounts": true,
   "auto_remove_invalid_accounts": true,
   "log_levels": [
     "debug",
@@ -26,7 +26,7 @@
       "mode": "flaresolverr",
       "cf_cookies": "",
       "cf_clearance": "",
-      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
       "browser": "chrome",
       "flaresolverr_url": "http://flaresolverr:8191",
       "timeout_sec": 60,
@@ -99,7 +99,7 @@
   "image_timeout_retry_secs": 30,
   "third_party_apps": {
     "infinite_canvas": {
-      "enabled": true,
+      "enabled": false,
       "url": "https://canvas.best"
     }
   }
